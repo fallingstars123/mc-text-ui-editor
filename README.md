@@ -2,6 +2,11 @@
 
 一个面向 Minecraft `title / actionbar / titleraw` 文本菜单预览的静态网页工具。
 
+## 在线体验
+
+- GitHub Pages：[在线打开编辑器](https://fallingstars123.github.io/mc-text-ui-editor/)
+- 本地打开：[index.html](./index.html)
+
 它现在更偏向“可视化预览器”而不是完整导出器，适合快速试做：
 - 多行 `actionbar` / 菜单样式预览
 - `§` 颜色码预览
@@ -26,12 +31,6 @@
 3. `Build and deployment` 选择 `Deploy from a branch`
 4. Branch 选择 `main`，文件夹选择 `/ (root)`
 5. 保存并等待 Pages 地址生成
-
-生成后，把下面这行里的链接替换成你的实际地址：
-
-```md
-[在线打开编辑器](https://YOUR_NAME.github.io/mc-text-ui-editor/)
-```
 
 ## 当前仓库结构
 
