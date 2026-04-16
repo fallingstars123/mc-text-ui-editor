@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -54,7 +54,7 @@
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
     }
 
-    h1, h2, p {
+    h1, h2, h3, p {
       margin-top: 0;
     }
 
@@ -236,7 +236,7 @@
     }
 
     details {
-      margin-top: 8px;
+      margin-top: 16px;
       border: 1px solid #24384a;
       border-radius: 12px;
       background: #101923;
@@ -373,18 +373,13 @@
         <button id="play-toggle" type="button">播放</button>
         <div class="field">
           <label for="fps-input">播放 FPS</label>
-          <input id="fps-input" type="number" min="1" max="30" value="8">
+          <input id="fps-input" type="number" min="1" max="30" value="24">
         </div>
         <label class="inline-toggle" for="loop-toggle">
-          <input id="loop-toggle" type="checkbox">
+          <input id="loop-toggle" type="checkbox" checked>
           <span>循环</span>
         </label>
       </div>
-
-      <details>
-        <summary>调试信息</summary>
-        <div class="status" id="status-output"></div>
-      </details>
 
       <section class="symbol-panel">
         <h3>特殊字符面板</h3>
@@ -409,6 +404,11 @@
         </div>
       </div>
       <p class="hint">预览现在模拟的是游戏内视角下的 `titleraw actionbar` 菜单样式：底部居中、多行、半透明底板，并支持 `§` 颜色码和换行。特殊字符会从本地 `assets/font/glyph_E0.png` 和 `assets/font/glyph_E1.png` 裁切，没有精灵图时再显示标签占位块。</p>
+
+      <details>
+        <summary>调试信息</summary>
+        <div class="status" id="status-output"></div>
+      </details>
     </section>
   </main>
 
