@@ -1,0 +1,19 @@
+﻿Thumbs.db
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build / temp
+dist/
+build/
+tmp/
+temp/

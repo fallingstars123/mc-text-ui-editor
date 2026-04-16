@@ -1,168 +1,79 @@
-# 🧠 Minecraft 字符动画编辑器（Title / Actionbar）
+﻿# Minecraft Text UI Editor
 
-## 1. 项目概述（Overview）
+一个面向 Minecraft `title / actionbar / titleraw` 文本菜单预览的静态网页工具。
 
-本项目旨在开发一个**专用于 Minecraft 文本动画的编辑工具**，支持对 Title / Actionbar 字符进行逐帧控制，实现类似打字机、乱码收束、扫描波动等动态效果，并可导出为游戏内可执行的命令序列。
+它现在更偏向“可视化预览器”而不是完整导出器，适合快速试做：
+- 多行 `actionbar` / 菜单样式预览
+- `§` 颜色码预览
+- 特殊字符面板插入
+- `glyph_E0.png` / `glyph_E1.png` 图标裁切渲染
+- 帧滑块与播放预览
 
-> 将“复杂的字符动画效果”从手写命令 → 转化为“可视化编辑 + 自动生成”。
+## 快速使用
 
----
+### 方式 1：本地直接打开
+1. 下载或克隆仓库
+2. 直接打开 [index.html](./index.html)
 
-## 2. 核心功能（Core Features）
+如果你是在本地文件夹里看这个 README，点上面的 `index.html` 就能直接进页面。
 
-### 2.1 实时预览系统
-- 输入文本动画描述（代码 / JSON）
-- 实时显示当前帧效果
-- 支持播放 / 暂停 / 拖动时间轴
+### 方式 2：发布到 GitHub Pages
+如果你希望“README 点一下就能用”，最稳妥的方式是启用 GitHub Pages。
 
----
+步骤：
+1. 把仓库推到 GitHub
+2. 进入 `Settings -> Pages`
+3. `Build and deployment` 选择 `Deploy from a branch`
+4. Branch 选择 `main`，文件夹选择 `/ (root)`
+5. 保存并等待 Pages 地址生成
 
-### 2.2 字符级动画控制
-每个字符可独立控制：
+生成后，把下面这行里的链接替换成你的实际地址：
 
-- 显现（逐字出现 / 淡入）
-- 消散（逐字消失 / 淡出）
-- 状态过渡（乱码 → 正确字符）
-- 延迟（per-character delay）
-
----
-
-### 2.3 动画模板系统
-内置常用动画模板：
-
-- Typewriter（打字机）
-- Scramble In（乱码收束）
-- Fade In / Out
-- Wave（波浪）
-- Pulse（呼吸）
-
-支持参数调整（速度 / 强度 / 延迟等）
-
----
-
-### 2.4 背景动效系统（轻量）
-用于增强视觉效果：
-
-- 扫描线（scanline）
-- 字符流（matrix-like）
-- 波动条（wave lines）
-- 粒子/闪烁背景（简化版）
-
----
-
-### 2.5 导出系统（核心价值）
-将动画转化为 Minecraft 可用格式：
-
-- `/title`
-- `/actionbar`
-- `tellraw JSON`
-- datapack function（逐帧输出）
-
----
-
-## 3. 技术架构（Architecture）
-
-### 技术选型
-- 前端：JavaScript / TypeScript
-- 渲染：Canvas 2D
-- 数据：JSON 配置驱动
-
----
-
-### 系统结构
-Code Input → Parser → Frame Evaluator → Glyph State → Renderer
-
----
-
-### 核心模块
-
-#### 1. Parser（解析器）
-将用户输入转换为配置对象
-
-#### 2. Evaluator（核心逻辑）
-根据当前 frame 计算每个字符状态：
-- 是否显示
-- 当前字符（正常 / 乱码）
-- 颜色 / 样式
-
-#### 3. Renderer（渲染层）
-- 将字符绘制到 Canvas
-- 处理布局与视觉效果
-
----
-
-## 4. 数据结构设计（Data Structure）
-
-### 动画输入示例
-
-```json
-{
-  "text": "WARNING",
-  "effect": "scramble",
-  "frame": 12,
-  "charDelay": 2,
-  "seed": 42
-}
+```md
+[在线打开编辑器](https://YOUR_NAME.github.io/mc-text-ui-editor/)
 ```
-### 字符状态（核心中间层）
-```json
-{
-  "glyphs": [
-    {
-      "index": 0,
-      "targetChar": "W",
-      "displayChar": "W",
-      "visible": true
-    },
-    {
-      "index": 1,
-      "targetChar": "A",
-      "displayChar": "8",
-      "visible": true
-    }
-  ]
-}
+
+## 当前仓库结构
+
+```text
+mc-text-ui-editor/
+├─ assets/
+│  ├─ font/
+│  │  ├─ glyph_E0.png
+│  │  └─ glyph_E1.png
+│  └─ fonts/
+│     └─ unifont.ttf
+├─ index.html
+├─ script.js
+├─ README.md
+└─ LICENSE
 ```
-## 5. 开发阶段规划（Milestones）
-🔹 Phase 1：核心引擎（MVP）
 
-目标：实现 代码 ↔ 显示层
+## 当前功能
 
-Canvas 字符渲染
-单行文本显示
-frame 控制
-typewriter 动画
-scramble 动画
-实时预览
+- 文本输入区
+- 帧滑块
+- 播放 / 暂停 / 循环
+- 类 Minecraft 菜单式预览
+- 特殊字符插入面板
+- 本地 `glyph_E0.png` / `glyph_E1.png` 图标渲染
+- 中文与特殊图标混排预览
 
-👉 输出：最小可运行原型
+## 注意事项
 
-🔹 Phase 2：工具化
+- GitHub 仓库页面里直接点 `index.html`，通常只会打开源码页，不会像网页那样运行。
+- 要想“README 点一下直接用”，请启用 GitHub Pages。
+- 当前项目是纯静态网页，不需要安装依赖，也不需要构建。
+- 如果你替换了 `assets/font/glyph_E0.png` 或 `assets/font/glyph_E1.png`，刷新页面后就会使用新的图标资源。
 
-目标：初步编辑器功能
+## 后续可扩展方向
 
-JSON 输入面板
-播放 / 时间轴
-多动画支持
-参数调整
-基础背景效果
+- `titleraw rawtext` JSON 解析
+- 菜单布局模板
+- 命令导出
+- 更精细的 Minecraft 字距模拟
+- 更多 glyph 图集支持
 
-👉 输出：可实际制作动画
+## License
 
-🔹 Phase 3：系统完善
-
-目标：提升效率与表现力
-
-模板系统
-多图层支持
-洋葱皮（前后帧辅助）
-随机种子控制
-UI 优化
-🔹 Phase 4：导出与整合
-
-目标：对接 Minecraft
-
-导出帧序列
-自动生成命令
-datapack 支持
-性能优化（帧压缩）
+本仓库使用 [LICENSE](./LICENSE) 中声明的许可证。
