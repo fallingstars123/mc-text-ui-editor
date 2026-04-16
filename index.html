@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft 字符动画编辑器</title>
+  <style>
+    @font-face {
+      font-family: "MinecraftUnifont";
+      src: url("./assets/fonts/unifont.ttf") format("truetype");
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: dark;
+      --bg: #0f1720;
+      --panel: #18222e;
+      --panel-border: #27374a;
+      --accent: #7fffd4;
+      --accent-soft: rgba(127, 255, 212, 0.14);
+      --text: #e8f0f7;
+      --muted: #90a3b7;
+      --canvas-bg: #081018;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "MinecraftUnifont", "Segoe UI", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(127, 255, 212, 0.12), transparent 32%),
+        linear-gradient(180deg, #111b25 0%, #0a1118 100%);
+      color: var(--text);
+    }
+
+    .app {
+      width: min(1100px, calc(100% - 32px));
+      margin: 32px auto;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: rgba(24, 34, 46, 0.9);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+    }
+
+    h1, h2, p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-size: 1rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .intro {
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    textarea,
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid #33485f;
+      border-radius: 12px;
+      background: #101923;
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .play-row {
+      display: grid;
+      grid-template-columns: 1fr 96px 84px;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    .inline-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      border: 1px solid #33485f;
+      border-radius: 12px;
+      background: #101923;
+      color: var(--muted);
+      padding: 0 10px;
+      margin-bottom: 18px;
+    }
+
+    .inline-toggle input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    button {
+      width: 100%;
+      border: 1px solid #3c5a73;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #183143 0%, #122330 100%);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: #6faccd;
+    }
+
+    .preview-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      color: var(--muted);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+
+    .preview-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .preview-option input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .preview-shell {
+      padding: 20px;
+      border-radius: 18px;
+      border: 1px solid #223547;
+      background:
+        radial-gradient(circle at top, rgba(127, 255, 212, 0.08), transparent 40%),
+        linear-gradient(180deg, #0c131b 0%, #0a1118 100%);
+    }
+
+    .preview-stage {
+      width: min(100%, 620px);
+      margin: 0 auto;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+      border: 1px solid #2b3e50;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        var(--canvas-bg);
+      background-size: 100% 8px, auto;
+    }
+
+    .hint {
+      margin-top: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .status {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #101923;
+      border: 1px solid #24384a;
+      color: var(--muted);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    details {
+      margin-top: 8px;
+      border: 1px solid #24384a;
+      border-radius: 12px;
+      background: #101923;
+      overflow: hidden;
+    }
+
+    summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      color: var(--muted);
+      user-select: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::after {
+      content: "展开";
+      float: right;
+      color: #7fa0b8;
+    }
+
+    details[open] summary::after {
+      content: "收起";
+    }
+
+    details .status {
+      margin: 0;
+      border: 0;
+      border-top: 1px solid #24384a;
+      border-radius: 0;
+    }
+
+    .symbol-panel {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid #24384a;
+      background: #101923;
+    }
+
+    .symbol-panel h3 {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .symbol-groups {
+      display: grid;
+      gap: 12px;
+    }
+
+    .symbol-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .symbol-group-title {
+      font-size: 0.85rem;
+      color: #7fa0b8;
+    }
+
+    .symbol-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .symbol-chip {
+      width: auto;
+      min-width: 58px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #33485f;
+      background: #13202c;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .symbol-chip-char {
+      font-size: 1rem;
+      color: #ffffff;
+    }
+
+    .symbol-chip-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel">
+      <h1>Minecraft 字符动画编辑器</h1>
+      <p class="intro">先把最小原型跑起来：输入文本，拖动帧数，在右侧实时预览打字机动画。</p>
+
+      <div class="field">
+        <label for="text-input">文本内容</label>
+        <textarea id="text-input">§l§b 『雪球菜单』
+▶==================◀
+§e①.『传送主城』
+§e②.『发起传送』
+§e③.『接受传送』
+§e④.『改变模式』
+§e⑤.『个人信息』
+§b▶==================◀
+§a抬头确定✔ §c低头关闭✘</textarea>
+      </div>
+
+      <div class="control-row">
+        <div class="field">
+          <label for="frame-range">当前帧</label>
+          <input id="frame-range" type="range" min="0" max="20" value="0">
+        </div>
+        <div class="field">
+          <label for="char-delay">每字符延迟</label>
+          <input id="char-delay" type="number" min="1" max="20" value="2">
+        </div>
+      </div>
+
+      <div class="play-row">
+        <button id="play-toggle" type="button">播放</button>
+        <div class="field">
+          <label for="fps-input">播放 FPS</label>
+          <input id="fps-input" type="number" min="1" max="30" value="8">
+        </div>
+        <label class="inline-toggle" for="loop-toggle">
+          <input id="loop-toggle" type="checkbox">
+          <span>循环</span>
+        </label>
+      </div>
+
+      <details>
+        <summary>调试信息</summary>
+        <div class="status" id="status-output"></div>
+      </details>
+
+      <section class="symbol-panel">
+        <h3>特殊字符面板</h3>
+        <div class="symbol-groups" id="symbol-groups"></div>
+      </section>
+    </section>
+
+    <section class="panel">
+      <div class="preview-meta">
+        <div>
+          <h2>Canvas Preview</h2>
+          <label class="preview-option" for="preview-mode">
+            <input id="preview-mode" type="checkbox" checked>
+            <span>Actionbar Preview</span>
+          </label>
+        </div>
+        <div class="badge" id="frame-label">Frame 0</div>
+      </div>
+      <div class="preview-shell">
+        <div class="preview-stage">
+          <canvas id="preview-canvas" width="960" height="540"></canvas>
+        </div>
+      </div>
+      <p class="hint">预览现在模拟的是游戏内视角下的 `titleraw actionbar` 菜单样式：底部居中、多行、半透明底板，并支持 `§` 颜色码和换行。特殊字符会从本地 `assets/font/glyph_E0.png` 和 `assets/font/glyph_E1.png` 裁切，没有精灵图时再显示标签占位块。</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
