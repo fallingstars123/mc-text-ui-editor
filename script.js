@@ -7,7 +7,10 @@ const loopToggle = document.querySelector("#loop-toggle");
 const previewMode = document.querySelector("#preview-mode");
 const frameLabel = document.querySelector("#frame-label");
 const statusOutput = document.querySelector("#status-output");
-const symbolGroups = document.querySelector("#symbol-groups");
+const symbolTabs = document.querySelector("#symbol-tabs");
+const minecraftView = document.querySelector("#view-minecraft");
+const genericView = document.querySelector("#view-generic");
+const controlsView = document.querySelector("#view-controls");
 const canvas = document.querySelector("#preview-canvas");
 const ctx = canvas.getContext("2d");
 const pixelFont = '"MinecraftUnifont", "Lucida Console", Monaco, monospace';
@@ -38,7 +41,7 @@ const minecraftColors = {
   f: "#ffffff",
   r: "#ffffff",
 };
-const symbolLibrary = [
+const minecraftSymbolLibrary = [
   {
     title: "HUD",
     items: [
@@ -68,7 +71,7 @@ const symbolLibrary = [
     ],
   },
   {
-    title: "键鼠",
+    title: "键鼠与手柄",
     items: [
       { label: "左键", char: "" },
       { label: "右键", char: "" },
@@ -77,11 +80,6 @@ const symbolLibrary = [
       { label: "右键小", char: "" },
       { label: "滚轮", char: "" },
       { label: "鼠标", char: "" },
-    ],
-  },
-  {
-    title: "手柄与平台",
-    items: [
       { label: "A", char: "" },
       { label: "B", char: "" },
       { label: "X", char: "" },
@@ -97,8 +95,39 @@ const symbolLibrary = [
     ],
   },
 ];
+const genericSymbols = [
+  { label: "爱心", char: "♥" },
+  { label: "星星", char: "★" },
+  { label: "骷髅", char: "☠" },
+  { label: "钻石星", char: "✦" },
+  { label: "空心星", char: "✧" },
+  { label: "花朵", char: "✿" },
+  { label: "空框", char: "☐" },
+  { label: "勾选", char: "☑" },
+  { label: "叉框", char: "☒" },
+  { label: "右箭头", char: "→" },
+  { label: "左箭头", char: "←" },
+  { label: "左右", char: "↔" },
+  { label: "上下", char: "↕" },
+  { label: "上", char: "↑" },
+  { label: "下", char: "↓" },
+];
+const colorControls = [
+  ["0", "黑", "#000000"], ["1", "深蓝", "#0000AA"], ["2", "深绿", "#00AA00"], ["3", "深青", "#00AAAA"],
+  ["4", "深红", "#AA0000"], ["5", "紫", "#AA00AA"], ["6", "金", "#FFAA00"], ["7", "灰", "#AAAAAA"],
+  ["8", "深灰", "#555555"], ["9", "蓝", "#5555FF"], ["a", "亮绿", "#55FF55"], ["b", "亮青", "#55FFFF"],
+  ["c", "亮红", "#FF5555"], ["d", "粉紫", "#FF55FF"], ["e", "黄", "#FFFF55"], ["f", "白", "#FFFFFF"],
+];
+const formatControls = [
+  { code: "k", label: "乱序" },
+  { code: "l", label: "加粗" },
+  { code: "m", label: "删除线" },
+  { code: "n", label: "下划线" },
+  { code: "o", label: "斜体" },
+  { code: "r", label: "重置" },
+];
 const specialSymbolMap = new Map(
-  symbolLibrary.flatMap((group) => group.items.map((item) => [item.char, item]))
+  minecraftSymbolLibrary.flatMap((group) => group.items.map((item) => [item.char, item]))
 );
 const spriteSheetSources = {
   E0: ["assets/font/glyph_E0.png"],
@@ -106,17 +135,20 @@ const spriteSheetSources = {
 };
 const spriteSheetCache = new Map();
 const symbolPreviewCanvases = new Map();
+const symbolViews = {
+  minecraft: minecraftView,
+  generic: genericView,
+  controls: controlsView,
+};
 
 let isPlaying = false;
 let playTimer = null;
 
 function setupCanvasResolution() {
   const scale = canvasResolutionScale;
-
   canvas.width = viewportWidth * scale;
   canvas.height = viewportHeight * scale;
   canvas.style.aspectRatio = `${viewportWidth} / ${viewportHeight}`;
-
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.imageSmoothingEnabled = false;
 }
@@ -124,20 +156,11 @@ function setupCanvasResolution() {
 function parseInput() {
   const text = textInput.value.replace(/\r/g, "");
   const charDelay = Math.max(1, Number(charDelayInput.value) || 1);
-
-  return {
-    text,
-    effect: "typewriter",
-    charDelay,
-  };
+  return { text, effect: "typewriter", charDelay };
 }
 
 function evaluateFrame(config, frame) {
-  const visibleCount = Math.min(
-    config.text.length,
-    Math.floor(frame / config.charDelay)
-  );
-
+  const visibleCount = Math.min(config.text.length, Math.floor(frame / config.charDelay));
   return {
     frame,
     visibleCount,
@@ -155,15 +178,8 @@ function parseMinecraftText(text) {
   let bold = false;
 
   const pushSegment = () => {
-    if (!currentText) {
-      return;
-    }
-
-    segments.push({
-      text: currentText,
-      color,
-      bold,
-    });
+    if (!currentText) return;
+    segments.push({ text: currentText, color, bold });
     currentText = "";
   };
 
@@ -175,41 +191,38 @@ function parseMinecraftText(text) {
 
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
-
     if (char === "§" && index + 1 < text.length) {
       pushSegment();
       const code = text[index + 1].toLowerCase();
       index += 1;
-
       if (code === "l") {
         bold = true;
         continue;
       }
-
       if (code === "r") {
         color = "#ffffff";
         bold = false;
         continue;
       }
-
-      if (minecraftColors[code]) {
-        color = minecraftColors[code];
+      if (code === "o") {
         continue;
       }
-
+      if (code === "k" || code === "m" || code === "n") {
+        continue;
+      }
+      if (minecraftColors[code]) {
+        color = minecraftColors[code];
+      }
       continue;
     }
-
     if (char === "\n") {
       pushLine();
       continue;
     }
-
     currentText += char;
   }
 
   pushLine();
-
   return lines.filter((line) => line.length > 0);
 }
 
@@ -219,44 +232,24 @@ function setSegmentFont(size, bold, targetCtx = ctx) {
 
 function measureMinecraftChar(char, size, bold) {
   setSegmentFont(size, bold);
-
-  if (char === " ") {
-    return Math.max(4, Math.round(size * spaceAdvanceScale));
-  }
-
+  if (char === " ") return Math.max(4, Math.round(size * spaceAdvanceScale));
   return Math.ceil(ctx.measureText(char).width) + textAdvanceSpacing;
 }
 
 function measureMinecraftText(text, size, bold) {
   let width = 0;
-
-  for (const char of text) {
-    width += measureMinecraftChar(char, size, bold);
-  }
-
+  for (const char of text) width += measureMinecraftChar(char, size, bold);
   return width;
 }
 
 function getSpriteInfo(char) {
   const codePoint = char.codePointAt(0);
-  if (!codePoint) {
-    return null;
-  }
-
+  if (!codePoint) return null;
   const hex = codePoint.toString(16).toUpperCase().padStart(4, "0");
   const plane = hex.slice(0, 2);
   const lowByte = Number.parseInt(hex.slice(2), 16);
-
-  if (!spriteSheetSources[plane]) {
-    return null;
-  }
-
-  return {
-    plane,
-    hex,
-    column: lowByte % 16,
-    row: Math.floor(lowByte / 16),
-  };
+  if (!spriteSheetSources[plane]) return null;
+  return { plane, hex, column: lowByte % 16, row: Math.floor(lowByte / 16) };
 }
 
 function renderSymbolPreviewCanvases() {
@@ -283,17 +276,7 @@ function renderSymbolPreviewCanvases() {
       const cellHeight = spriteState.image.height / 16;
       const sourceX = spriteInfo.column * cellWidth;
       const sourceY = spriteInfo.row * cellHeight;
-      previewCtx.drawImage(
-        spriteState.image,
-        sourceX,
-        sourceY,
-        cellWidth,
-        cellHeight,
-        1,
-        1,
-        drawSize,
-        drawSize
-      );
+      previewCtx.drawImage(spriteState.image, sourceX, sourceY, cellWidth, cellHeight, 1, 1, drawSize, drawSize);
       return;
     }
 
@@ -302,30 +285,20 @@ function renderSymbolPreviewCanvases() {
     previewCtx.strokeStyle = "rgba(255, 255, 255, 0.28)";
     previewCtx.lineWidth = 1;
     previewCtx.strokeRect(1, 1, drawSize, drawSize);
-
-    const label = specialSymbolMap.get(char)?.label || "?";
     previewCtx.fillStyle = "#ffffff";
     setSegmentFont(7, true, previewCtx);
     previewCtx.textAlign = "center";
     previewCtx.textBaseline = "middle";
-    previewCtx.fillText(label.slice(0, 2), 9, 9);
+    previewCtx.fillText(char, 9, 9);
   });
 }
 
 function getSpriteSheet(plane) {
   const existing = spriteSheetCache.get(plane);
-  if (existing) {
-    return existing;
-  }
+  if (existing) return existing;
 
   const image = new Image();
-
-  const spriteState = {
-    image,
-    loaded: false,
-    failed: false,
-    sourceIndex: 0,
-  };
+  const spriteState = { image, loaded: false, failed: false, sourceIndex: 0 };
 
   image.onload = () => {
     spriteState.loaded = true;
@@ -342,7 +315,6 @@ function getSpriteSheet(plane) {
       image.src = sources[nextIndex];
       return;
     }
-
     spriteState.failed = true;
     renderSymbolPreviewCanvases();
   };
@@ -355,37 +327,19 @@ function getSpriteSheet(plane) {
 function tokenizeSegment(segment) {
   const tokens = [];
   let buffer = "";
-
   for (const char of segment.text) {
     const spriteInfo = getSpriteInfo(char);
     if (spriteInfo) {
       if (buffer) {
-        tokens.push({
-          type: "text",
-          text: buffer,
-        });
+        tokens.push({ type: "text", text: buffer });
         buffer = "";
       }
-
-      tokens.push({
-        type: "icon",
-        char,
-        label: specialSymbolMap.get(char)?.label || `U+${spriteInfo.hex}`,
-        spriteInfo,
-      });
+      tokens.push({ type: "icon", char, label: specialSymbolMap.get(char)?.label || `U+${spriteInfo.hex}`, spriteInfo });
       continue;
     }
-
     buffer += char;
   }
-
-  if (buffer) {
-    tokens.push({
-      type: "text",
-      text: buffer,
-    });
-  }
-
+  if (buffer) tokens.push({ type: "text", text: buffer });
   return tokens;
 }
 
@@ -393,26 +347,21 @@ function measureSegmentWidth(segment, size) {
   const iconSize = Math.round(size * iconScale);
   const iconAdvance = Math.round(iconSize * iconAdvanceScale);
   let width = 0;
-
   tokenizeSegment(segment).forEach((token) => {
     if (token.type === "icon") {
       width += iconAdvance;
       return;
     }
-
     width += measureMinecraftText(token.text, size, segment.bold);
   });
-
   return width;
 }
 
 function measureLineWidth(line, size) {
   let width = 0;
-
   line.forEach((segment) => {
     width += measureSegmentWidth(segment, size);
   });
-
   return width;
 }
 
@@ -421,13 +370,11 @@ function drawIconPlaceholder(x, baselineY, size, label, color) {
   const iconAdvance = Math.round(iconSize * iconAdvanceScale);
   const top = baselineY - iconSize + Math.round(size * 0.9);
   const shortLabel = label.slice(0, 2);
-
   ctx.fillStyle = "rgba(10, 14, 10, 0.92)";
   ctx.fillRect(x, top, iconSize, iconSize);
   ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x, top, iconSize, iconSize);
-
   ctx.fillStyle = color;
   ctx.font = `bold ${Math.max(8, Math.round(size * 0.42))}px ${pixelFont}`;
   ctx.textAlign = "center";
@@ -435,13 +382,11 @@ function drawIconPlaceholder(x, baselineY, size, label, color) {
   ctx.fillText(shortLabel, x + iconSize / 2, top + iconSize / 2 + 1);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-
   return iconAdvance;
 }
 
 function drawMinecraftLine(line, x, y, size) {
   let currentX = x;
-
   line.forEach((segment) => {
     tokenizeSegment(segment).forEach((token) => {
       if (token.type === "icon") {
@@ -449,33 +394,19 @@ function drawMinecraftLine(line, x, y, size) {
         const iconAdvance = Math.round(iconSize * iconAdvanceScale);
         const spriteInfo = token.spriteInfo || getSpriteInfo(token.char);
         const spriteState = spriteInfo ? getSpriteSheet(spriteInfo.plane) : null;
-
         if (spriteInfo && spriteState?.loaded && !spriteState.failed) {
           const top = y - iconSize + Math.round(size * 0.9);
           const cellWidth = spriteState.image.width / 16;
           const cellHeight = spriteState.image.height / 16;
           const sourceX = spriteInfo.column * cellWidth;
           const sourceY = spriteInfo.row * cellHeight;
-
-          ctx.drawImage(
-            spriteState.image,
-            sourceX,
-            sourceY,
-            cellWidth,
-            cellHeight,
-            currentX,
-            top,
-            iconSize,
-            iconSize
-          );
+          ctx.drawImage(spriteState.image, sourceX, sourceY, cellWidth, cellHeight, currentX, top, iconSize, iconSize);
           currentX += iconAdvance;
           return;
         }
-
         currentX += drawIconPlaceholder(currentX, y, size, token.label, segment.color);
         return;
       }
-
       for (const char of token.text) {
         setSegmentFont(size, segment.bold);
         ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
@@ -490,7 +421,6 @@ function drawMinecraftLine(line, x, y, size) {
 
 function drawSceneBackground() {
   const horizon = viewportHeight * 0.62;
-
   const sky = ctx.createLinearGradient(0, 0, 0, horizon);
   sky.addColorStop(0, "#8ec5ff");
   sky.addColorStop(1, "#a7d0ff");
@@ -520,56 +450,139 @@ function insertAtCursor(textarea, value) {
   const start = textarea.selectionStart ?? textarea.value.length;
   const end = textarea.selectionEnd ?? textarea.value.length;
   const nextValue = `${textarea.value.slice(0, start)}${value}${textarea.value.slice(end)}`;
-
   textarea.value = nextValue;
   textarea.focus();
-
   const nextCursor = start + value.length;
   textarea.setSelectionRange(nextCursor, nextCursor);
 }
 
-function renderSymbolPanel() {
-  symbolGroups.innerHTML = "";
-  symbolPreviewCanvases.clear();
+function setActiveTab(key) {
+  document.querySelectorAll(".symbol-tab").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.tab === key);
+  });
+  Object.entries(symbolViews).forEach(([viewKey, element]) => {
+    element.classList.toggle("active", viewKey === key);
+  });
+}
 
-  symbolLibrary.forEach((group) => {
-    const groupEl = document.createElement("section");
-    groupEl.className = "symbol-group";
+function createGroupSection(title, items, mode = "minecraft") {
+  const groupEl = document.createElement("section");
+  groupEl.className = "symbol-group";
 
-    const titleEl = document.createElement("div");
-    titleEl.className = "symbol-group-title";
-    titleEl.textContent = group.title;
-    groupEl.appendChild(titleEl);
+  const titleEl = document.createElement("div");
+  titleEl.className = "symbol-group-title";
+  titleEl.textContent = title;
+  groupEl.appendChild(titleEl);
 
-    const gridEl = document.createElement("div");
-    gridEl.className = "symbol-grid";
+  const gridEl = document.createElement("div");
+  gridEl.className = "symbol-grid";
 
-    group.items.forEach((item) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "symbol-chip";
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "symbol-chip";
+
+    if (mode === "minecraft") {
       button.title = `${item.label} ${item.char}`;
-
       const previewCanvas = document.createElement("canvas");
       previewCanvas.className = "symbol-chip-canvas";
       button.appendChild(previewCanvas);
       symbolPreviewCanvases.set(item.char, previewCanvas);
+    } else if (mode === "generic") {
+      const charEl = document.createElement("span");
+      charEl.className = "symbol-chip-char";
+      charEl.textContent = item.char;
+      button.appendChild(charEl);
+    } else if (mode === "color") {
+      button.classList.add("color-chip");
+      const swatch = document.createElement("span");
+      swatch.className = "color-swatch";
+      swatch.style.background = item.color;
+      button.appendChild(swatch);
+      const labelEl = document.createElement("span");
+      labelEl.className = "symbol-chip-label";
+      labelEl.textContent = item.code;
+      button.appendChild(labelEl);
+    } else {
+      const charEl = document.createElement("span");
+      charEl.className = "symbol-chip-char";
+      charEl.textContent = item.code;
+      button.appendChild(charEl);
+    }
 
-      const label = document.createElement("span");
-      label.className = "symbol-chip-label";
-      label.textContent = item.label;
-      button.appendChild(label);
+    const label = document.createElement("span");
+    label.className = "symbol-chip-label";
+    label.textContent = item.label;
+    button.appendChild(label);
 
-      button.addEventListener("click", () => {
-        insertAtCursor(textInput, item.char);
-        render();
-      });
-      gridEl.appendChild(button);
+    button.addEventListener("click", () => {
+      insertAtCursor(textInput, item.insert);
+      render();
     });
 
-    groupEl.appendChild(gridEl);
-    symbolGroups.appendChild(groupEl);
+    gridEl.appendChild(button);
   });
+
+  groupEl.appendChild(gridEl);
+  return groupEl;
+}
+
+function renderSymbolPanel() {
+  symbolTabs.innerHTML = "";
+  minecraftView.innerHTML = "";
+  genericView.innerHTML = "";
+  controlsView.innerHTML = "";
+  symbolPreviewCanvases.clear();
+
+  const tabs = [
+    ["minecraft", "我的世界特殊字符"],
+    ["generic", "其他可用特殊字符"],
+    ["controls", "字体控制"],
+  ];
+
+  tabs.forEach(([key, label]) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = `symbol-tab${key === "minecraft" ? " active" : ""}`;
+    tab.dataset.tab = key;
+    tab.textContent = label;
+    tab.addEventListener("click", () => setActiveTab(key));
+    symbolTabs.appendChild(tab);
+  });
+
+  minecraftSymbolLibrary.forEach((group) => {
+    minecraftView.appendChild(
+      createGroupSection(
+        group.title,
+        group.items.map((item) => ({ ...item, insert: item.char })),
+        "minecraft"
+      )
+    );
+  });
+
+  genericView.appendChild(
+    createGroupSection(
+      "常用符号",
+      genericSymbols.map((item) => ({ ...item, insert: item.char })),
+      "generic"
+    )
+  );
+
+  controlsView.appendChild(
+    createGroupSection(
+      "颜色代码",
+      colorControls.map(([code, label, color]) => ({ code: `§${code}`, label, color, insert: `§${code}` })),
+      "color"
+    )
+  );
+
+  controlsView.appendChild(
+    createGroupSection(
+      "格式代码",
+      formatControls.map((item) => ({ code: `§${item.code}`, label: item.label, insert: `§${item.code}` })),
+      "format"
+    )
+  );
 
   renderSymbolPreviewCanvases();
 }
@@ -583,9 +596,7 @@ function renderPreview(state) {
   const isActionbarMode = previewMode.checked;
   const fontSize = isActionbarMode ? 18 : 26;
   const lineHeight = isActionbarMode ? 28 : 40;
-  const maxWidth = lines.reduce((largest, line) => {
-    return Math.max(largest, measureLineWidth(line, fontSize));
-  }, 0);
+  const maxWidth = lines.reduce((largest, line) => Math.max(largest, measureLineWidth(line, fontSize)), 0);
   const contentHeight = Math.max(lines.length, 1) * lineHeight;
   const panelWidth = Math.max(240, Math.min(viewportWidth * 0.54, maxWidth + 36));
   const panelHeight = contentHeight + 22;
@@ -610,38 +621,28 @@ function renderPreview(state) {
 function syncFrameBounds(config) {
   const nextMax = Math.max(config.text.length * config.charDelay + 2, 10);
   frameRange.max = String(nextMax);
-
-  if (Number(frameRange.value) > nextMax) {
-    frameRange.value = String(nextMax);
-  }
+  if (Number(frameRange.value) > nextMax) frameRange.value = String(nextMax);
 }
 
 function render() {
   const config = parseInput();
   syncFrameBounds(config);
-
   const frame = Number(frameRange.value) || 0;
   const state = evaluateFrame(config, frame);
-
   frameLabel.textContent = `Frame ${frame}`;
   renderPreview(state);
-
-  statusOutput.textContent = JSON.stringify(
-    {
-      input: config,
-      state,
-      playback: {
-        isPlaying,
-        fps: Math.max(1, Number(fpsInput.value) || 1),
-        loop: loopToggle.checked,
-      },
-      preview: {
-        actionbarMode: previewMode.checked,
-      },
+  statusOutput.textContent = JSON.stringify({
+    input: config,
+    state,
+    playback: {
+      isPlaying,
+      fps: Math.max(1, Number(fpsInput.value) || 1),
+      loop: loopToggle.checked,
     },
-    null,
-    2
-  );
+    preview: {
+      actionbarMode: previewMode.checked,
+    },
+  }, null, 2);
 }
 
 function stopPlayback() {
@@ -649,7 +650,6 @@ function stopPlayback() {
     window.clearInterval(playTimer);
     playTimer = null;
   }
-
   isPlaying = false;
   playToggle.textContent = "播放";
 }
@@ -657,27 +657,22 @@ function stopPlayback() {
 function startPlayback() {
   const fps = Math.max(1, Number(fpsInput.value) || 1);
   const interval = Math.max(33, Math.floor(1000 / fps));
-
   stopPlayback();
   isPlaying = true;
   playToggle.textContent = "暂停";
-
   playTimer = window.setInterval(() => {
     const maxFrame = Number(frameRange.max) || 0;
     const nextFrame = Number(frameRange.value) + 1;
-
     if (nextFrame > maxFrame) {
       if (loopToggle.checked) {
         frameRange.value = "0";
         render();
         return;
       }
-
       stopPlayback();
       render();
       return;
     }
-
     frameRange.value = String(nextFrame);
     render();
   }, interval);
@@ -688,9 +683,7 @@ function startPlayback() {
 });
 
 frameRange.addEventListener("input", () => {
-  if (isPlaying) {
-    stopPlayback();
-  }
+  if (isPlaying) stopPlayback();
 });
 
 playToggle.addEventListener("click", () => {
@@ -699,10 +692,10 @@ playToggle.addEventListener("click", () => {
   } else {
     startPlayback();
   }
-
   render();
 });
 
 setupCanvasResolution();
 render();
 renderSymbolPanel();
+setActiveTab("minecraft");
