@@ -1,4 +1,4 @@
-const textInput = document.querySelector("#text-input");
+﻿const textInput = document.querySelector("#text-input");
 const frameRange = document.querySelector("#frame-range");
 const charDelayInput = document.querySelector("#char-delay");
 const fpsInput = document.querySelector("#fps-input");
@@ -18,6 +18,7 @@ const iconAdvanceScale = 0.68;
 const textAdvanceSpacing = 2;
 const spaceAdvanceScale = 0.9;
 const canvasResolutionScale = 2;
+const symbolPreviewScale = 2;
 const minecraftColors = {
   "0": "#000000",
   "1": "#0000aa",
@@ -104,6 +105,7 @@ const spriteSheetSources = {
   E1: ["assets/font/glyph_E1.png"],
 };
 const spriteSheetCache = new Map();
+const symbolPreviewCanvases = new Map();
 
 let isPlaying = false;
 let playTimer = null;
@@ -211,8 +213,8 @@ function parseMinecraftText(text) {
   return lines.filter((line) => line.length > 0);
 }
 
-function setSegmentFont(size, bold) {
-  ctx.font = `${bold ? "bold " : ""}${size}px ${pixelFont}`;
+function setSegmentFont(size, bold, targetCtx = ctx) {
+  targetCtx.font = `${bold ? "bold " : ""}${size}px ${pixelFont}`;
 }
 
 function measureMinecraftChar(char, size, bold) {
@@ -257,6 +259,59 @@ function getSpriteInfo(char) {
   };
 }
 
+function renderSymbolPreviewCanvases() {
+  symbolPreviewCanvases.forEach((previewCanvas, char) => {
+    const previewCtx = previewCanvas.getContext("2d");
+    const scale = symbolPreviewScale;
+    const cssSize = 18;
+    const drawSize = 16;
+
+    previewCanvas.width = cssSize * scale;
+    previewCanvas.height = cssSize * scale;
+    previewCanvas.style.width = `${cssSize}px`;
+    previewCanvas.style.height = `${cssSize}px`;
+
+    previewCtx.setTransform(scale, 0, 0, scale, 0, 0);
+    previewCtx.imageSmoothingEnabled = false;
+    previewCtx.clearRect(0, 0, cssSize, cssSize);
+
+    const spriteInfo = getSpriteInfo(char);
+    const spriteState = spriteInfo ? getSpriteSheet(spriteInfo.plane) : null;
+
+    if (spriteInfo && spriteState?.loaded && !spriteState.failed) {
+      const cellWidth = spriteState.image.width / 16;
+      const cellHeight = spriteState.image.height / 16;
+      const sourceX = spriteInfo.column * cellWidth;
+      const sourceY = spriteInfo.row * cellHeight;
+      previewCtx.drawImage(
+        spriteState.image,
+        sourceX,
+        sourceY,
+        cellWidth,
+        cellHeight,
+        1,
+        1,
+        drawSize,
+        drawSize
+      );
+      return;
+    }
+
+    previewCtx.fillStyle = "rgba(10, 14, 10, 0.92)";
+    previewCtx.fillRect(1, 1, drawSize, drawSize);
+    previewCtx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+    previewCtx.lineWidth = 1;
+    previewCtx.strokeRect(1, 1, drawSize, drawSize);
+
+    const label = specialSymbolMap.get(char)?.label || "?";
+    previewCtx.fillStyle = "#ffffff";
+    setSegmentFont(7, true, previewCtx);
+    previewCtx.textAlign = "center";
+    previewCtx.textBaseline = "middle";
+    previewCtx.fillText(label.slice(0, 2), 9, 9);
+  });
+}
+
 function getSpriteSheet(plane) {
   const existing = spriteSheetCache.get(plane);
   if (existing) {
@@ -276,6 +331,7 @@ function getSpriteSheet(plane) {
     spriteState.loaded = true;
     spriteState.failed = false;
     render();
+    renderSymbolPreviewCanvases();
   };
 
   image.onerror = () => {
@@ -288,6 +344,7 @@ function getSpriteSheet(plane) {
     }
 
     spriteState.failed = true;
+    renderSymbolPreviewCanvases();
   };
 
   image.src = spriteSheetSources[plane][0];
@@ -473,6 +530,7 @@ function insertAtCursor(textarea, value) {
 
 function renderSymbolPanel() {
   symbolGroups.innerHTML = "";
+  symbolPreviewCanvases.clear();
 
   symbolLibrary.forEach((group) => {
     const groupEl = document.createElement("section");
@@ -491,7 +549,17 @@ function renderSymbolPanel() {
       button.type = "button";
       button.className = "symbol-chip";
       button.title = `${item.label} ${item.char}`;
-      button.innerHTML = `<span class="symbol-chip-char">${item.char}</span><span class="symbol-chip-label">${item.label}</span>`;
+
+      const previewCanvas = document.createElement("canvas");
+      previewCanvas.className = "symbol-chip-canvas";
+      button.appendChild(previewCanvas);
+      symbolPreviewCanvases.set(item.char, previewCanvas);
+
+      const label = document.createElement("span");
+      label.className = "symbol-chip-label";
+      label.textContent = item.label;
+      button.appendChild(label);
+
       button.addEventListener("click", () => {
         insertAtCursor(textInput, item.char);
         render();
@@ -502,6 +570,8 @@ function renderSymbolPanel() {
     groupEl.appendChild(gridEl);
     symbolGroups.appendChild(groupEl);
   });
+
+  renderSymbolPreviewCanvases();
 }
 
 function renderPreview(state) {
